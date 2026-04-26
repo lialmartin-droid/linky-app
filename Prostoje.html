@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moje Linky</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont;
+  background: #0f0f0f;
+  color: white;
+}
+
+.app {
+  padding: 15px;
+}
+
+h2 {
+  margin-bottom: 10px;
+}
+
+.card {
+  background: #1c1c1e;
+  border-radius: 15px;
+  padding: 15px;
+  margin-bottom: 12px;
+}
+
+select, input {
+  width: 100%;
+  padding: 14px;
+  margin-top: 8px;
+  border-radius: 10px;
+  border: none;
+  background: #2c2c2e;
+  color: white;
+  font-size: 17px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  border-radius: 12px;
+  border: none;
+  font-size: 17px;
+}
+
+.btn-add { background: #0a84ff; }
+.btn-edit { background: #ff9f0a; }
+.btn-del { background: #ff3b30; }
+
+#vysledek {
+  font-size: 24px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.flash-red {
+  animation: flashRed 0.5s 4;
+}
+.flash-green {
+  animation: flashGreen 0.5s 4;
+}
+
+@keyframes flashRed {
+  0% { background: rgba(255,0,0,0.4); }
+  50% { background: transparent; }
+  100% { background: rgba(255,0,0,0.4); }
+}
+
+@keyframes flashGreen {
+  0% { background: rgba(0,255,0,0.4); }
+  50% { background: transparent; }
+  100% { background: rgba(0,255,0,0.4); }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app" id="app">
+
+<h2>Moje Linky</h2>
+
+<div class="card">
+<select id="team"></select>
+<select id="linka"></select>
+<select id="varianta"></select>
+<input id="vyrobeno" type="number" placeholder="Vyrobeno">
+</div>
+
+<div class="card">
+<div id="vysledek"></div>
+</div>
+
+<div class="card">
+<button class="btn-add" onclick="pridat()">➕ Přidat linku</button>
+<button class="btn-edit" onclick="upravit()">✏️ Upravit linku</button>
+<button class="btn-del" onclick="smazat()">🗑️ Smazat linku</button>
+</div>
+
+</div>
+
+<script>
+let defaultData = {"1":{},"2":{},"4":{},"6":{}};
+let data = JSON.parse(localStorage.getItem("data")) || defaultData;
+["1","2","4","6"].forEach(t=>{ if(!data[t]) data[t]={}; });
+
+let stav = JSON.parse(localStorage.getItem("stav")) || {};
+
+const teamSelect = document.getElementById("team");
+const linkaSelect = document.getElementById("linka");
+const variantaSelect = document.getElementById("varianta");
+const input = document.getElementById("vyrobeno");
+const vysledek = document.getElementById("vysledek");
+const appDiv = document.getElementById("app");
+
+function nactiTymy(){
+  teamSelect.innerHTML="";
+  ["1","2","4","6"].forEach(t=>{
+    teamSelect.add(new Option("Tým "+t,t));
+  });
+}
+
+teamSelect.onchange=()=>{stav.team=teamSelect.value;ulozStav();nactiLinky();}
+linkaSelect.onchange=()=>{stav.linka=linkaSelect.value;ulozStav();nactiVarianty();}
+variantaSelect.onchange=()=>{stav.varianta=variantaSelect.value;ulozStav();spocitat();}
+input.oninput=spocitat;
+
+function nactiLinky(){
+  linkaSelect.innerHTML="";
+  variantaSelect.innerHTML="";
+  let linky=data[teamSelect.value];
+
+  Object.keys(linky).forEach(l=>{
+    linkaSelect.add(new Option(l,l));
+  });
+
+  if(stav.linka && linky[stav.linka]){
+    linkaSelect.value=stav.linka;
+  }
+
+  nactiVarianty();
+}
+
+function nactiVarianty(){
+  variantaSelect.innerHTML="";
+  let l=data[teamSelect.value][linkaSelect.value];
+  if(!l)return;
+
+  if(l.varianty){
+    variantaSelect.style.display="block";
+    Object.keys(l.varianty).forEach(v=>{
+      variantaSelect.add(new Option(v,v));
+    });
+
+    if(stav.varianta && l.varianty[stav.varianta]){
+      variantaSelect.value=stav.varianta;
+    }
+  }else{
+    variantaSelect.style.display="none";
+  }
+
+  spocitat();
+}
+
+function spocitat(){
+  let v=parseInt(input.value);
+  if(!v){vysledek.innerHTML="";return;}
+
+  let l=data[teamSelect.value][linkaSelect.value];
+  if(!l)return;
+
+  let norma=l.norma || l.varianty[variantaSelect.value];
+
+  let cas=60/norma;
+  let odprac=v*cas;
+  let prostoj=Math.max(0,Math.round(60-odprac));
+  let vykon=((v/norma)*100).toFixed(1);
+
+  appDiv.classList.remove("flash-red","flash-green");
+  void appDiv.offsetWidth;
+
+  if(vykon<86){
+    appDiv.classList.add("flash-red");
+  }else{
+    appDiv.classList.add("flash-green");
+  }
+
+  if(odprac>60){
+    vysledek.innerHTML="Překročeno<br>"+vykon+"%";
+  }else{
+    vysledek.innerHTML="Prostoj: "+prostoj+" min<br>"+vykon+"%";
+  }
+}
+
+function pridat(){
+  let name=prompt("Název linky:");
+  if(!name)return;
+
+  let typ=confirm("Má varianty?");
+  if(typ){
+    let varianty={};
+    while(true){
+      let v=prompt("Varianta (Cancel = konec)");
+      if(!v)break;
+      let n=prompt("Norma:");
+      if(!n)continue;
+      varianty[v]=parseInt(n);
+    }
+    data[teamSelect.value][name]={varianty};
+  }else{
+    let n=prompt("Norma:");
+    if(!n)return;
+    data[teamSelect.value][name]={norma:parseInt(n)};
+  }
+
+  ulozData();
+  nactiLinky();
+}
+
+function upravit(){
+  let l=linkaSelect.value;
+  if(!l)return;
+
+  let obj=data[teamSelect.value][l];
+  let name=prompt("Nový název:",l);
+  if(!name)return;
+
+  delete data[teamSelect.value][l];
+  data[teamSelect.value][name]=obj;
+
+  ulozData();
+  nactiLinky();
+}
+
+function smazat(){
+  let l=linkaSelect.value;
+  if(!l)return;
+
+  if(confirm("Smazat "+l+"?")){
+    delete data[teamSelect.value][l];
+    ulozData();
+    nactiLinky();
+  }
+}
+
+function ulozStav(){localStorage.setItem("stav",JSON.stringify(stav));}
+function ulozData(){localStorage.setItem("data",JSON.stringify(data));}
+
+nactiTymy();
+if(stav.team){teamSelect.value=stav.team;}
+nactiLinky();
+</script>
+
+</body>
+</html>
