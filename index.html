@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Moje Linky PRO</title>
+<style>
+:root{--bg:#0f0f0f;--card:#1c1c1e;--card2:#242426;--input:#2c2c2e;--text:#fff;--muted:#b8b8bd;--blue:#0a84ff;--orange:#ff9f0a;--red:#ff3b30;--green:#30d158;--border:#3a3a3c}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text)}.app{max-width:820px;margin:0 auto;padding:16px 16px 90px}h1{font-size:30px;margin:12px 0 4px}h2{font-size:22px;margin:0 0 12px}h3{margin:12px 0 8px;font-size:19px}p{margin:6px 0;color:var(--muted)}.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 12px 28px #0005}.sub{background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:14px;margin-top:12px}label{display:block;font-weight:800;margin:12px 0 6px;color:#f2f2f7}select,input,textarea{width:100%;padding:15px;border-radius:14px;border:1px solid var(--border);background:var(--input);color:white;font-size:18px;outline:none}input::placeholder,textarea::placeholder{color:#8e8e93}textarea{min-height:150px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btns3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}button{width:100%;padding:15px;margin-top:10px;border-radius:14px;border:0;font-size:17px;font-weight:900;color:white;cursor:pointer}.blue{background:var(--blue)}.orange{background:var(--orange)}.red{background:var(--red)}.green{background:var(--green);color:#071207}.gray{background:#3a3a3c}.small{font-size:14px;padding:11px}.result{font-size:28px;line-height:1.35;text-align:center;font-weight:950;margin-top:10px}.norma{font-size:22px;text-align:center;background:#111;border:1px solid var(--border);border-radius:16px;padding:12px}.ok{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--orange)}.muted{color:var(--muted)}.badge{display:inline-block;background:var(--card2);border:1px solid var(--border);border-radius:999px;padding:8px 11px;margin:5px 4px 0 0;color:#ddd;font-size:15px}.badge strong{color:white}.item{background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:13px;margin-top:10px}.item h3{margin:0 0 6px}details{background:var(--card2);border:1px solid var(--border);border-radius:17px;padding:14px;margin-top:12px}summary{font-weight:950;font-size:20px;cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}.hint{font-size:15px;color:var(--muted)}.flash-red{animation:flashRed .45s 3}.flash-green{animation:flashGreen .45s 3}@keyframes flashRed{0%{background:rgba(255,0,0,.32)}50%{background:transparent}100%{background:rgba(255,0,0,.32)}}@keyframes flashGreen{0%{background:rgba(0,255,0,.22)}50%{background:transparent}100%{background:rgba(0,255,0,.22)}}@media(max-width:650px){.row,.btns,.btns3{grid-template-columns:1fr}h1{font-size:28px}.app{padding-left:14px;padding-right:14px}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<h1>Moje Linky PRO</h1>
+<p>Evidence týmů, linek/projektů, variant, norem a výpočtu prostojů.</p>
+
+<section class="card">
+  <h2>Výpočet prostoje</h2>
+  <label>Tým</label><select id="calcTeam"></select>
+  <label>Linka / projekt</label><select id="calcLine"></select>
+  <label>Varianta</label><select id="calcVariant"></select>
+  <div class="norma" id="normaBox">Norma: —</div>
+  <label>Vyrobeno</label><input id="produced" type="number" inputmode="numeric" pattern="[0-9]*" placeholder="Zadej počet kusů">
+</section>
+<section class="card">
+  <h2>Výsledek</h2>
+  <div id="result" class="result muted">Zadej počet vyrobených kusů.</div>
+  <div id="detail"></div>
+</section>
+
+<section class="card">
+  <h2>Správa databáze</h2>
+  <p>Každá část má vlastní výběr. Přepínání dole už nemění výpočet nahoře.</p>
+  <details>
+    <summary>👥 Týmy</summary>
+    <label>Vybraný tým</label><select id="teamSel"></select>
+    <label>Název týmu</label><input id="teamName" placeholder="např. 4">
+    <div class="btns3"><button class="blue" onclick="addTeam()">＋ Přidat</button><button class="orange" onclick="renameTeam()">✏️ Uložit</button><button class="red" onclick="deleteTeam()">🗑️ Smazat</button></div>
+  </details>
+  <details open>
+    <summary>🏭 Linky / projekty</summary>
+    <label>Tým</label><select id="lineTeam"></select>
+    <label>Vybraná linka / projekt</label><select id="lineSel"></select>
+    <label>Název linky / projektu</label><input id="lineName" placeholder="např. BM5">
+    <div class="btns3"><button class="blue" onclick="addLine()">＋ Přidat</button><button class="orange" onclick="renameLine()">✏️ Uložit</button><button class="red" onclick="deleteLine()">🗑️ Smazat</button></div>
+  </details>
+  <details open>
+    <summary>🔧 Varianty a normy</summary>
+    <label>Tým</label><select id="varTeam"></select>
+    <label>Linka / projekt</label><select id="varLine"></select>
+    <label>Vybraná varianta</label><select id="varSel"></select>
+    <label>Název varianty</label><input id="varName" placeholder="např. Varianta A">
+    <label>Norma ks / hod</label><input id="varNorm" type="number" inputmode="numeric" pattern="[0-9]*" placeholder="např. 60">
+    <div class="btns3"><button class="blue" onclick="addVariant()">＋ Přidat</button><button class="orange" onclick="saveVariant()">✏️ Uložit</button><button class="red" onclick="deleteVariant()">🗑️ Smazat</button></div>
+  </details>
+</section>
+
+<section class="card">
+  <h2>Záloha</h2>
+  <p>Nejdřív dej Vytvořit zálohu, zkopíruj text a ulož si ho třeba do poznámek.</p>
+  <div class="btns3"><button class="green" onclick="exportBackup()">Vytvořit zálohu</button><button class="blue" onclick="copyBackup()">Kopírovat</button><button class="orange" onclick="importBackup()">Načíst</button></div>
+  <textarea id="backupBox" placeholder="Sem se vloží / zobrazí záloha"></textarea>
+</section>
+
+<section class="card"><h2>Aktuální databáze</h2><div id="overview"></div></section>
+</div>
+<script>
+const DATA_KEY='moje_linky_pro_data_v3_stabilni';
+const OLD_KEYS=['moje_linky_pro_data_v2','data'];
+const STATE_KEY='moje_linky_pro_state_v3_stabilni';
+const PROD_KEY='moje_linky_pro_produced_v3_stabilni';
+const OLD_PROD='moje_linky_pro_vyroba_v2';
+const defaultData={"1":{"537":{"varianty":{"537":32}},"A2":{"varianty":{"A2":33}},"BM2":{"varianty":{"Q3":53}},"BM9":{"varianty":{"537":30}},"MONO":{"varianty":{"G / DJ":54}},"ŠKODA":{"varianty":{"LA":10}}},"2":{"A2 FP":{"varianty":{"Všechny":45}},"BM3":{"varianty":{"VP":51}},"BM4":{"varianty":{"XFK":59}},"Cabrio":{"varianty":{"A2 Tiguan":54,"A2 asuv":54,"Hybrid":48,"A2 phev":54,"T roc":48,"A1 phev acuv":55}},"Coex":{"varianty":{"4 OP":45,"5 OP":56}},"Fiat":{"varianty":{"Všechny":45}},"Q3 nová":{"varianty":{"Petrol":67,"Diesel":65,"Tiguan petrol":61,"Tiguan diesel":56,"Touran petrol":60,"Touran diesel":59}},"Q3 stará":{"varianty":{"Petrol":57,"Diesel":55,"NAR":45,"Tiguan petrol":61,"Tiguan diesel":56}},"Q5":{"varianty":{"Všechny":59}}},"4":{},"6":{"160b":{"varianty":{"160b":67}},"206":{"varianty":{"206":48}},"Assy":{"varianty":{"QF":35}},"BM8":{"varianty":{"ML / VL":59}},"X2-50":{"varianty":{"X2-50":54}}}};
+function load(k,f){try{return JSON.parse(localStorage.getItem(k))||f}catch(e){return f}}
+function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}
+function num(v){let n=Number(String(v).replace(',','.'));return Number.isFinite(n)?n:0}
+function sortCs(a,b){return String(a).localeCompare(String(b),'cs',{numeric:true})}
+function first(arr){return arr.length?arr[0]:''}
+function dataFromOld(){for(const k of OLD_KEYS){let d=load(k,null);if(d&&typeof d==='object')return d}return null}
+let data=load(DATA_KEY,null)||dataFromOld()||clone(defaultData);
+let state=load(STATE_KEY,{calcTeam:'',calcLine:'',calcVariant:'',lineVariant:{}});
+let produced=load(PROD_KEY,null)||load(OLD_PROD,{});
+function normalize(){for(const t of Object.keys(defaultData)){if(!data[t])data[t]={}} for(const [t,ls] of Object.entries(data)){if(!ls||typeof ls!=='object')data[t]={}; for(const [l,o] of Object.entries(data[t])){if(!o||typeof o!=='object')data[t][l]={varianty:{}}; if(!data[t][l].varianty)data[t][l].varianty={};}} save(DATA_KEY,data);save(PROD_KEY,produced)}
+normalize();
+const calc={team:document.getElementById('calcTeam'),line:document.getElementById('calcLine'),variant:document.getElementById('calcVariant'),produced:document.getElementById('produced')};
+const mgr={teamSel:document.getElementById('teamSel'),teamName:document.getElementById('teamName'),lineTeam:document.getElementById('lineTeam'),lineSel:document.getElementById('lineSel'),lineName:document.getElementById('lineName'),varTeam:document.getElementById('varTeam'),varLine:document.getElementById('varLine'),varSel:document.getElementById('varSel'),varName:document.getElementById('varName'),varNorm:document.getElementById('varNorm')};
+function teams(){return Object.keys(data).sort(sortCs)} function lines(t){return Object.keys(data[t]||{}).sort(sortCs)} function variants(t,l){return Object.keys(((data[t]||{})[l]||{}).varianty||{}).sort(sortCs)}
+function setOptions(sel,items,label=x=>x,keep=''){let val=keep||sel.value;sel.innerHTML='';items.forEach(x=>sel.add(new Option(label(x),x))); if(items.includes(val))sel.value=val; else if(items.length)sel.value=items[0];}
+function pKey(t,l,v){return t+'||'+l+'||'+v} function lvKey(t,l){return t+'||'+l}
+function refreshCalc(keepTeam=true,keepLine=true,keepVar=true){let ts=teams();setOptions(calc.team,ts,t=>'Tým '+t,keepTeam?state.calcTeam:'');state.calcTeam=calc.team.value||'';let ls=lines(state.calcTeam);setOptions(calc.line,ls,x=>x,keepLine?state.calcLine:'');state.calcLine=calc.line.value||'';let vs=variants(state.calcTeam,state.calcLine);let saved=state.lineVariant[lvKey(state.calcTeam,state.calcLine)]||state.calcVariant;setOptions(calc.variant,vs,x=>x,keepVar?saved:'');state.calcVariant=calc.variant.value||'';if(state.calcVariant)state.lineVariant[lvKey(state.calcTeam,state.calcLine)]=state.calcVariant;calc.produced.value=produced[pKey(state.calcTeam,state.calcLine,state.calcVariant)]??'';save(STATE_KEY,state);calcResult()}
+calc.team.onchange=()=>{state.calcTeam=calc.team.value;state.calcLine='';state.calcVariant='';refreshCalc(true,false,false)};
+calc.line.onchange=()=>{state.calcLine=calc.line.value;state.calcVariant='';refreshCalc(true,true,true)};
+calc.variant.onchange=()=>{state.calcVariant=calc.variant.value;if(state.calcVariant)state.lineVariant[lvKey(state.calcTeam,state.calcLine)]=state.calcVariant;calc.produced.value=produced[pKey(state.calcTeam,state.calcLine,state.calcVariant)]??'';save(STATE_KEY,state);calcResult()};
+calc.produced.oninput=()=>{if(state.calcTeam&&state.calcLine&&state.calcVariant){produced[pKey(state.calcTeam,state.calcLine,state.calcVariant)]=calc.produced.value;save(PROD_KEY,produced)}calcResult()};
+function currentNorm(){return num((((data[state.calcTeam]||{})[state.calcLine]||{}).varianty||{})[state.calcVariant])}
+function calcResult(){let norm=currentNorm();document.getElementById('normaBox').textContent=norm?'Norma: '+norm+' ks / hod':'Norma: —';let r=document.getElementById('result'),d=document.getElementById('detail'),app=document.getElementById('app');app.classList.remove('flash-red','flash-green'); if(!state.calcTeam||!state.calcLine||!state.calcVariant){r.className='result muted';r.textContent='Nejdřív vyber tým, linku a variantu.';d.innerHTML='';return} if(!norm){r.className='result warn';r.textContent='Tato varianta nemá nastavenou normu.';d.innerHTML='';return} let v=num(calc.produced.value); if(!v){r.className='result muted';r.textContent='Zadej počet vyrobených kusů.';d.innerHTML='';return} let odprac=v*(60/norm), prostoj=Math.max(0,Math.round(60-odprac)), vykon=(v/norm)*100; void app.offsetWidth; if(vykon<86){app.classList.add('flash-red');r.className='result bad'}else{app.classList.add('flash-green');r.className='result ok'} r.innerHTML=(odprac>60?'Překročeno':'Prostoj: '+prostoj+' min')+'<br>Výkon: '+vykon.toFixed(1)+' %'; d.innerHTML=`<span class="badge"><strong>Tým:</strong> ${esc(state.calcTeam)}</span><span class="badge"><strong>Linka:</strong> ${esc(state.calcLine)}</span><span class="badge"><strong>Varianta:</strong> ${esc(state.calcVariant)}</span><span class="badge"><strong>Norma:</strong> ${norm} ks/hod</span>`}
+function refreshManagers(preserve=true){let ts=teams();setOptions(mgr.teamSel,ts,t=>'Tým '+t,preserve?mgr.teamSel.value:state.calcTeam);mgr.teamName.value=mgr.teamSel.value||'';setOptions(mgr.lineTeam,ts,t=>'Tým '+t,preserve?mgr.lineTeam.value:state.calcTeam);refreshLineManager(preserve);setOptions(mgr.varTeam,ts,t=>'Tým '+t,preserve?mgr.varTeam.value:state.calcTeam);refreshVarLineManager(preserve);renderOverview()}
+function refreshLineManager(preserve=true){let t=mgr.lineTeam.value;setOptions(mgr.lineSel,lines(t),x=>x,preserve?mgr.lineSel.value:'');mgr.lineName.value=mgr.lineSel.value||''}
+function refreshVarLineManager(preserve=true){let t=mgr.varTeam.value;setOptions(mgr.varLine,lines(t),x=>x,preserve?mgr.varLine.value:'');refreshVarManager(preserve)}
+function refreshVarManager(preserve=true){let t=mgr.varTeam.value,l=mgr.varLine.value;setOptions(mgr.varSel,variants(t,l),x=>x,preserve?mgr.varSel.value:'');let v=mgr.varSel.value;mgr.varName.value=v||'';mgr.varNorm.value=v?data[t][l].varianty[v]:''}
+mgr.teamSel.onchange=()=>{mgr.teamName.value=mgr.teamSel.value||''};mgr.lineTeam.onchange=()=>refreshLineManager(false);mgr.lineSel.onchange=()=>{mgr.lineName.value=mgr.lineSel.value||''};mgr.varTeam.onchange=()=>refreshVarLineManager(false);mgr.varLine.onchange=()=>refreshVarManager(false);mgr.varSel.onchange=()=>refreshVarManager(true);
+function addTeam(){let n=mgr.teamName.value.trim();if(!n)return alert('Zadej název týmu.');if(data[n])return alert('Tento tým už existuje.');data[n]={};save(DATA_KEY,data);refreshCalc(false,false,false);refreshManagers(false)}
+function renameTeam(){let old=mgr.teamSel.value,n=mgr.teamName.value.trim();if(!old||!n)return;if(n!==old&&data[n])return alert('Tento tým už existuje.');if(n!==old){data[n]=data[old];delete data[old];renameKeys(old,null,null,n,null,null);if(state.calcTeam===old)state.calcTeam=n}save(DATA_KEY,data);save(STATE_KEY,state);refreshCalc(true,true,true);refreshManagers(false)}
+function deleteTeam(){let t=mgr.teamSel.value;if(!t)return;if(!confirm('Smazat tým '+t+' včetně všech linek a variant?'))return;delete data[t];Object.keys(produced).forEach(k=>{if(k.startsWith(t+'||'))delete produced[k]});Object.keys(state.lineVariant).forEach(k=>{if(k.startsWith(t+'||'))delete state.lineVariant[k]});if(state.calcTeam===t){state.calcTeam='';state.calcLine='';state.calcVariant=''}save(DATA_KEY,data);save(PROD_KEY,produced);save(STATE_KEY,state);refreshCalc(false,false,false);refreshManagers(false)}
+function addLine(){let t=mgr.lineTeam.value,n=mgr.lineName.value.trim();if(!t||!n)return alert('Vyber tým a zadej linku.');if(data[t][n])return alert('Tato linka už existuje.');data[t][n]={varianty:{}};save(DATA_KEY,data);state.calcTeam=t;state.calcLine=n;state.calcVariant='';refreshCalc(true,true,false);mgr.varTeam.value=t;refreshVarLineManager(false);mgr.varLine.value=n;refreshVarManager(false);mgr.varName.value='';mgr.varNorm.value='';refreshManagers(true);mgr.varTeam.value=t;refreshVarLineManager(false);mgr.varLine.value=n;refreshVarManager(false)}
+function renameLine(){let t=mgr.lineTeam.value,old=mgr.lineSel.value,n=mgr.lineName.value.trim();if(!t||!old||!n)return;if(n!==old&&data[t][n])return alert('Tato linka už existuje.');if(n!==old){data[t][n]=data[t][old];delete data[t][old];renameKeys(t,old,null,t,n,null);if(state.calcTeam===t&&state.calcLine===old)state.calcLine=n}save(DATA_KEY,data);save(STATE_KEY,state);refreshCalc(true,true,true);refreshManagers(false)}
+function deleteLine(){let t=mgr.lineTeam.value,l=mgr.lineSel.value;if(!t||!l)return;if(!confirm('Smazat linku '+l+'?'))return;delete data[t][l];Object.keys(produced).forEach(k=>{if(k.startsWith(t+'||'+l+'||'))delete produced[k]});delete state.lineVariant[lvKey(t,l)];if(state.calcTeam===t&&state.calcLine===l){state.calcLine='';state.calcVariant=''}save(DATA_KEY,data);save(PROD_KEY,produced);save(STATE_KEY,state);refreshCalc(true,false,false);refreshManagers(false)}
+function addVariant(){let t=mgr.varTeam.value,l=mgr.varLine.value,v=mgr.varName.value.trim(),n=num(mgr.varNorm.value);if(!t||!l||!v)return alert('Vyber tým, linku a zadej variantu.');if(data[t][l].varianty[v]!==undefined)return alert('Tato varianta už existuje.');data[t][l].varianty[v]=n;state.calcTeam=t;state.calcLine=l;state.calcVariant=v;state.lineVariant[lvKey(t,l)]=v;save(DATA_KEY,data);save(STATE_KEY,state);refreshCalc(true,true,true);renderOverview();mgr.varTeam.value=t;refreshVarLineManager(false);mgr.varLine.value=l;refreshVarManager(false);mgr.varName.value='';mgr.varNorm.value='';setTimeout(()=>mgr.varName.focus(),50)}
+function saveVariant(){let t=mgr.varTeam.value,l=mgr.varLine.value,old=mgr.varSel.value,v=mgr.varName.value.trim(),n=num(mgr.varNorm.value);if(!t||!l||!old||!v)return alert('Vyber variantu a zadej název.');if(v!==old&&data[t][l].varianty[v]!==undefined)return alert('Tato varianta už existuje.');delete data[t][l].varianty[old];data[t][l].varianty[v]=n;if(v!==old)renameKeys(t,l,old,t,l,v);if(state.calcTeam===t&&state.calcLine===l){state.calcVariant=v;state.lineVariant[lvKey(t,l)]=v}save(DATA_KEY,data);save(STATE_KEY,state);refreshCalc(true,true,true);refreshManagers(false)}
+function deleteVariant(){let t=mgr.varTeam.value,l=mgr.varLine.value,v=mgr.varSel.value;if(!t||!l||!v)return;if(!confirm('Smazat variantu '+v+'?'))return;delete data[t][l].varianty[v];delete produced[pKey(t,l,v)];if(state.lineVariant[lvKey(t,l)]===v)delete state.lineVariant[lvKey(t,l)];if(state.calcTeam===t&&state.calcLine===l&&state.calcVariant===v)state.calcVariant='';save(DATA_KEY,data);save(PROD_KEY,produced);save(STATE_KEY,state);refreshCalc(true,true,false);refreshManagers(false)}
+function renameKeys(oldT,oldL,oldV,newT,newL,newV){let np={};for(const [k,val] of Object.entries(produced)){let [t,l,v]=k.split('||');if((oldT===null||t===oldT)&&(oldL===null||l===oldL)&&(oldV===null||v===oldV)){if(newT!==null)t=newT;if(newL!==null)l=newL;if(newV!==null)v=newV}np[pKey(t,l,v)]=val}produced=np;let nl={};for(const [k,val0] of Object.entries(state.lineVariant)){let [t,l]=k.split('||');let val=val0;if((oldT===null||t===oldT)&&(oldL===null||l===oldL)){if(newT!==null)t=newT;if(newL!==null)l=newL;if(oldV!==null&&val===oldV&&newV!==null)val=newV}nl[lvKey(t,l)]=val}state.lineVariant=nl;save(PROD_KEY,produced)}
+function renderOverview(){let html='';for(const t of teams()){html+=`<div class="item"><h3>Tým ${esc(t)}</h3>`;let ls=lines(t);if(!ls.length)html+=`<p class="muted">Zatím bez linek/projektů.</p>`;for(const l of ls){html+=`<p><strong>${esc(l)}</strong></p>`;for(const v of variants(t,l)){html+=`<span class="badge">${esc(v)}: <strong>${esc(data[t][l].varianty[v])}</strong> ks/hod</span>`}}html+='</div>'}document.getElementById('overview').innerHTML=html||'<p class="muted">Zatím nejsou žádná data.</p>'}
+function exportBackup(){let backup={app:'Moje Linky PRO',version:4,created:new Date().toISOString(),data,state,produced};document.getElementById('backupBox').value=JSON.stringify(backup,null,2)}
+function importBackup(){let raw=document.getElementById('backupBox').value.trim();if(!raw)return alert('Nejdřív vlož zálohu.');try{let b=JSON.parse(raw);if(!b.data)return alert('Záloha neobsahuje data.');if(!confirm('Načíst zálohu? Aktuální data se přepíšou.'))return;data=b.data;state=b.state||b.stav||{calcTeam:'',calcLine:'',calcVariant:'',lineVariant:b.stavLinek||{}};produced=b.produced||b.vyroba||{};normalize();save(STATE_KEY,state);refreshCalc(true,true,true);refreshManagers(false);alert('Záloha byla načtena.')}catch(e){alert('Zálohu se nepodařilo načíst.')}}
+function copyBackup(){let box=document.getElementById('backupBox');if(!box.value)exportBackup();box.focus();box.select();document.execCommand('copy')}
+refreshCalc(true,true,true);refreshManagers(false);
+</script>
+</body>
+</html>
