@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Moje Linky PRO</title>
+<style>
+:root{
+  --bg:#0f0f0f;--card:#1c1c1e;--card2:#242426;--input:#2c2c2e;--text:#fff;--muted:#b8b8bd;
+  --blue:#0a84ff;--orange:#ff9f0a;--red:#ff3b30;--green:#30d158;--border:#3a3a3c;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text)}
+.app{max-width:780px;margin:0 auto;padding:15px 15px 80px}
+h1{font-size:28px;margin:10px 0 4px}h2{font-size:19px;margin:0 0 10px}p{margin:6px 0;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:0 10px 24px #0005}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+label{display:block;font-weight:700;margin:10px 0 5px;color:#eee}
+select,input,textarea{width:100%;padding:14px;margin:0;border-radius:12px;border:1px solid var(--border);background:var(--input);color:white;font-size:17px;outline:none}
+textarea{min-height:150px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+input::placeholder{color:#8e8e93}button{width:100%;padding:14px;margin-top:10px;border-radius:13px;border:none;font-size:16px;font-weight:800;color:white;cursor:pointer}
+.btn-add{background:var(--blue)}.btn-edit{background:var(--orange)}.btn-del{background:var(--red)}.btn-green{background:var(--green);color:#071207}.btn-gray{background:#3a3a3c}.btn-small{padding:10px;font-size:14px;margin-top:6px}
+.badge{display:inline-block;background:var(--card2);border:1px solid var(--border);border-radius:999px;padding:7px 10px;margin:4px 4px 0 0;color:#ddd;font-size:14px}.badge strong{color:white}
+#vysledek{font-size:25px;line-height:1.35;margin-top:10px;text-align:center;font-weight:900}.normaBox{font-size:20px;text-align:center;padding:10px;border-radius:14px;background:#111;border:1px solid var(--border)}
+.ok{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--orange)}.muted{color:var(--muted)}
+.listItem{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:8px}.listItem h3{margin:0 0 5px;font-size:17px}
+details.manage{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:10px}summary{font-weight:900;font-size:17px;cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}.hint{font-size:14px;color:var(--muted)}.listItem p{margin:4px 0}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.flash-red{animation:flashRed .45s 4}.flash-green{animation:flashGreen .45s 4}@keyframes flashRed{0%{background:rgba(255,0,0,.35)}50%{background:transparent}100%{background:rgba(255,0,0,.35)}}@keyframes flashGreen{0%{background:rgba(0,255,0,.25)}50%{background:transparent}100%{background:rgba(0,255,0,.25)}}
+
+.promptOverlay{position:fixed;inset:0;background:#0009;display:flex;align-items:center;justify-content:center;z-index:9999;padding:18px}
+.promptBox{width:100%;max-width:420px;background:#1c1c1e;border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:0 20px 60px #000}
+.promptBox h3{margin:0 0 10px;font-size:19px}
+.promptBox input{margin-top:8px}
+.promptActions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.promptActions button{margin-top:0}
+@media(max-width:620px){.row,.row3,.actions,.actions3{grid-template-columns:1fr}h1{font-size:25px}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<h1>Moje Linky PRO</h1>
+<p>Evidence týmů, linek/projektů, variant, norem a výpočtu prostojů.</p>
+
+<div class="card">
+  <h2>Výpočet prostoje</h2>
+  <label>Tým</label><select id="team"></select>
+  <label>Linka / projekt</label><select id="linka"></select>
+  <label>Varianta</label><select id="varianta"></select>
+  <div class="normaBox" id="normaBox">Norma: —</div>
+  <label>Vyrobeno</label><input id="vyrobeno" type="number" inputmode="numeric" pattern="[0-9]*" min="0" placeholder="Zadej počet vyrobených kusů">
+</div>
+
+<div class="card">
+  <h2>Výsledek</h2>
+  <div id="vysledek" class="muted">Vyber tým, linku, variantu a zadej výrobu.</div>
+  <div id="detail"></div>
+</div>
+
+<div class="card">
+  <h2>Správa databáze</h2>
+  <p class="hint">Rozbal jen tu část, kterou chceš upravit. Nemusíš nic mazat kvůli změně názvu nebo normy.</p>
+
+  <details class="manage">
+    <summary>👥 Týmy</summary>
+    <label>Vybraný tým</label><select id="manageTeamSelect"></select>
+    <label>Název / číslo týmu</label><input id="manageTeamName" type="text" placeholder="např. 1, 2, 4, Noční">
+    <div class="actions3">
+      <button class="btn-add" onclick="pridatTymForm()">➕ Přidat tým</button>
+      <button class="btn-edit" onclick="upravitTymForm()">✏️ Uložit změnu</button>
+      <button class="btn-del" onclick="smazatTymForm()">🗑️ Smazat tým</button>
+    </div>
+  </details>
+
+  <details class="manage">
+    <summary>🏭 Linky / projekty</summary>
+    <label>Tým</label><select id="manageLineTeam"></select>
+    <label>Vybraná linka / projekt</label><select id="manageLineSelect"></select>
+    <label>Název linky / projektu</label><input id="manageLineName" type="text" placeholder="např. Linka 1, Projekt A">
+    <div class="actions3">
+      <button class="btn-add" onclick="pridatLinkuForm()">➕ Přidat linku</button>
+      <button class="btn-edit" onclick="upravitLinkuForm()">✏️ Uložit změnu</button>
+      <button class="btn-del" onclick="smazatLinkuForm()">🗑️ Smazat linku</button>
+    </div>
+  </details>
+
+  <details class="manage">
+    <summary>🔧 Varianty a normy</summary>
+    <label>Tým</label><select id="manageVarTeam"></select>
+    <label>Linka / projekt</label><select id="manageVarLine"></select>
+    <label>Vybraná varianta</label><select id="manageVarSelect"></select>
+    <label>Název varianty</label><input id="manageVarName" type="text" placeholder="např. Varianta A">
+    <label>Norma ks / hod</label><input id="manageVarNorm" type="number" inputmode="decimal" pattern="[0-9]*" min="0" placeholder="např. 60">
+    <div class="actions3">
+      <button class="btn-add" onclick="pridatVariantuForm()">➕ Přidat variantu</button>
+      <button class="btn-edit" onclick="upravitVariantuForm()">✏️ Uložit změnu</button>
+      <button class="btn-del" onclick="smazatVariantuForm()">🗑️ Smazat variantu</button>
+    </div>
+  </details>
+</div>
+
+<div class="card">
+  <h2>Záloha dat</h2>
+  <p class="hint">Záloha obsahuje týmy, linky, varianty, normy, uložené hodnoty vyrobeno i poslední výběry.</p>
+  <div class="actions3">
+    <button class="btn-green" onclick="exportBackup()">⬇️ Vytvořit zálohu</button>
+    <button class="btn-add" onclick="importBackup()">⬆️ Načíst zálohu</button>
+    <button class="btn-gray" onclick="copyBackup()">📋 Kopírovat</button>
+  </div>
+  <textarea id="backupBox" placeholder="Tady se zobrazí záloha, nebo sem vlož zálohu pro načtení."></textarea>
+</div>
+
+<div class="card">
+  <h2>Aktuální databáze</h2>
+  <div id="prehledDat"></div>
+</div>
+</div>
+
+<script>
+const DATA_KEY="moje_linky_pro_data_v2";
+const STAV_KEY="moje_linky_pro_stav_v2";
+const VYROBA_KEY="moje_linky_pro_vyroba_v2";
+const LINE_STAV_KEY="moje_linky_pro_stav_linek_v2";
+
+let defaultData={
+  "1":{
+    "537":{"varianty":{"537":32}},
+    "A2":{"varianty":{"A2":33}},
+    "BM2":{"varianty":{"Q3":53}},
+    "BM9":{"varianty":{"537":30}},
+    "MONO":{"varianty":{"G / DJ":54}},
+    "ŠKODA":{"varianty":{"LA":10}}
+  },
+  "2":{
+    "A2 FP":{"varianty":{"Všechny":45}},
+    "BM3":{"varianty":{"VP":51}},
+    "BM4":{"varianty":{"XFK":59}},
+    "Cabrio":{"varianty":{"A2 Tiguan":54,"A2 asuv":54,"Hybrid":48,"A2 phev":54,"T roc":48,"A1 phev acuv":55}},
+    "Coex":{"varianty":{"4 OP":45,"5 OP":56}},
+    "Fiat":{"varianty":{"Všechny":45}},
+    "Q3 nová":{"varianty":{"Petrol":67,"Diesel":65,"Tiguan petrol":61,"Tiguan diesel":56,"Touran petrol":60,"Touran diesel":59}},
+    "Q3 stará":{"varianty":{"Petrol":57,"Diesel":55,"NAR":45,"Tiguan petrol":61,"Tiguan diesel":56}},
+    "Q5":{"varianty":{"Všechny":59}}
+  },
+  "4":{},
+  "6":{
+    "160b":{"varianty":{"160b":67}},
+    "206":{"varianty":{"206":48}},
+    "Assy":{"varianty":{"QF":35}},
+    "BM8":{"varianty":{"ML / VL":59}},
+    "X2-50":{"varianty":{"X2-50":54}}
+  }
+};
+let data=loadJSON(DATA_KEY,defaultData);
+let stav=loadJSON(STAV_KEY,{});
+let vyroba=loadJSON(VYROBA_KEY,{});
+let stavLinek=loadJSON(LINE_STAV_KEY,{});
+
+function mergeDefaultData(){
+  let changed=false;
+  Object.entries(defaultData).forEach(([team,linky])=>{
+    if(!data[team]){data[team]={};changed=true}
+    Object.entries(linky).forEach(([line,obj])=>{
+      if(!data[team][line]){data[team][line]={varianty:{}};changed=true}
+      if(!data[team][line].varianty){data[team][line].varianty={};changed=true}
+      Object.entries(obj.varianty||{}).forEach(([variant,norma])=>{
+        if(data[team][line].varianty[variant]===undefined){
+          data[team][line].varianty[variant]=norma;
+          changed=true;
+        }
+      });
+    });
+  });
+  if(changed)saveJSON(DATA_KEY,data);
+}
+mergeDefaultData();
+
+const teamSelect=document.getElementById("team");
+const linkaSelect=document.getElementById("linka");
+const variantaSelect=document.getElementById("varianta");
+const input=document.getElementById("vyrobeno");
+const vysledek=document.getElementById("vysledek");
+const detail=document.getElementById("detail");
+const normaBox=document.getElementById("normaBox");
+const appDiv=document.getElementById("app");
+
+function loadJSON(key,fallback){try{return JSON.parse(localStorage.getItem(key))||fallback}catch(e){return fallback}}
+function saveJSON(key,value){localStorage.setItem(key,JSON.stringify(value))}
+function ulozData(){saveJSON(DATA_KEY,data)}
+function ulozStav(){saveJSON(STAV_KEY,stav)}
+function ulozVyrobu(){saveJSON(VYROBA_KEY,vyroba)}
+function ulozStavLinek(){saveJSON(LINE_STAV_KEY,stavLinek)}
+function esc(s){return String(s??"").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[m]))}
+function cislo(txt){let n=Number(String(txt).replace(",","."));return Number.isFinite(n)?n:0}
+function vlastniPrompt(nadpis, vychozi="", numeric=false){
+  return new Promise(resolve=>{
+    let overlay=document.createElement("div");
+    overlay.className="promptOverlay";
+    overlay.innerHTML=`<div class="promptBox"><h3>${esc(nadpis)}</h3><input id="promptInput" ${numeric?'type="number" inputmode="decimal" pattern="[0-9]*"':'type="text"'} value="${esc(vychozi)}"><div class="promptActions"><button class="btn-gray" id="promptCancel">Zrušit</button><button class="btn-add" id="promptOk">OK</button></div></div>`;
+    document.body.appendChild(overlay);
+    let inp=overlay.querySelector("#promptInput");
+    let close=val=>{overlay.remove();resolve(val)};
+    overlay.querySelector("#promptCancel").onclick=()=>close(null);
+    overlay.querySelector("#promptOk").onclick=()=>close(inp.value);
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter")close(inp.value);if(e.key==="Escape")close(null)});
+    setTimeout(()=>{inp.focus();inp.select()},50);
+  });
+}
+function zadejText(text, vychozi=""){return vlastniPrompt(text, vychozi, false)}
+function zadejCislo(text, vychozi=""){return vlastniPrompt(text, vychozi, true)}
+function selectedTeam(){return teamSelect.value}
+function selectedLink(){return linkaSelect.value}
+function selectedVar(){return variantaSelect.value}
+function lineStateKey(team,link){return team+"||"+link}
+function prodKey(team,link,varianta){return team+"||"+link+"||"+varianta}
+function aktualniLinka(){let t=selectedTeam(),l=selectedLink();return data[t]&&data[t][l]?data[t][l]:null}
+function aktualniNorma(){let l=aktualniLinka();if(!l)return 0;let v=selectedVar();return l.varianty&&l.varianty[v]?cislo(l.varianty[v]):0}
+
+teamSelect.onchange=()=>{stav.team=selectedTeam();ulozStav();nactiLinky()};
+linkaSelect.onchange=()=>{
+  stav.linka=selectedLink();
+  ulozStav();
+  nactiVarianty(true);
+};
+variantaSelect.onchange=()=>{
+  stav.varianta=selectedVar();
+  stavLinek[lineStateKey(selectedTeam(),selectedLink())]=selectedVar();
+  ulozStav();ulozStavLinek();
+  nactiVyrobu();spocitat();
+};
+input.oninput=()=>{
+  if(selectedTeam()&&selectedLink()&&selectedVar()){
+    vyroba[prodKey(selectedTeam(),selectedLink(),selectedVar())]=input.value;
+    ulozVyrobu();
+  }
+  spocitat();
+};
+
+function nactiTymy(){
+  teamSelect.innerHTML="";
+  Object.keys(data).sort((a,b)=>String(a).localeCompare(String(b),'cs',{numeric:true})).forEach(t=>teamSelect.add(new Option("Tým "+t,t)));
+  if(stav.team&&data[stav.team])teamSelect.value=stav.team;
+  else if(teamSelect.options.length)stav.team=teamSelect.value;
+}
+function nactiLinky(){
+  linkaSelect.innerHTML="";variantaSelect.innerHTML="";
+  let t=selectedTeam();let linky=data[t]||{};
+  Object.keys(linky).sort((a,b)=>a.localeCompare(b,'cs',{numeric:true})).forEach(l=>linkaSelect.add(new Option(l,l)));
+  if(stav.linka&&linky[stav.linka])linkaSelect.value=stav.linka;
+  else if(linkaSelect.options.length)stav.linka=linkaSelect.value;
+  ulozStav();
+  nactiVarianty(false);
+}
+function nactiVarianty(rememberPerLine){
+  variantaSelect.innerHTML="";
+  let l=aktualniLinka();
+  if(!l){normaBox.textContent="Norma: —";input.value="";spocitat();renderPrehled();return}
+  if(!l.varianty)l.varianty={};
+  let vars=Object.keys(l.varianty).sort((a,b)=>a.localeCompare(b,'cs',{numeric:true}));
+  vars.forEach(v=>variantaSelect.add(new Option(v,v)));
+  let savedForLine=stavLinek[lineStateKey(selectedTeam(),selectedLink())];
+  if(savedForLine&&l.varianty[savedForLine])variantaSelect.value=savedForLine;
+  else if(stav.varianta&&l.varianty[stav.varianta]&&!rememberPerLine)variantaSelect.value=stav.varianta;
+  else if(variantaSelect.options.length)variantaSelect.value=variantaSelect.options[0].value;
+  stav.varianta=selectedVar();
+  if(selectedVar())stavLinek[lineStateKey(selectedTeam(),selectedLink())]=selectedVar();
+  ulozStav();ulozStavLinek();
+  nactiVyrobu();spocitat();renderPrehled();
+}
+function nactiVyrobu(){
+  let k=prodKey(selectedTeam(),selectedLink(),selectedVar());
+  input.value=vyroba[k]??"";
+}
+function spocitat(){
+  let norma=aktualniNorma();
+  normaBox.textContent=norma?"Norma: "+norma+" ks / hod":"Norma: —";
+  appDiv.classList.remove("flash-red","flash-green");
+  if(!selectedTeam()||!selectedLink()||!selectedVar()){
+    vysledek.className="muted";vysledek.innerHTML="Nejdřív přidej/vyber tým, linku a variantu.";detail.innerHTML="";return;
+  }
+  if(!norma){vysledek.className="warn";vysledek.innerHTML="Tato varianta nemá nastavenou normu.";detail.innerHTML="";return}
+  let v=cislo(input.value);
+  if(!v){vysledek.className="muted";vysledek.innerHTML="Zadej počet vyrobených kusů.";detail.innerHTML="";return}
+  let casNaKus=60/norma;
+  let odprac=v*casNaKus;
+  let prostoj=Math.max(0,Math.round(60-odprac));
+  let vykon=(v/norma)*100;
+  void appDiv.offsetWidth;
+  if(vykon<86){appDiv.classList.add("flash-red");vysledek.className="bad"}else{appDiv.classList.add("flash-green");vysledek.className="ok"}
+  vysledek.innerHTML=(odprac>60?"Překročeno":"Prostoj: "+prostoj+" min")+"<br>Výkon: "+vykon.toFixed(1)+" %";
+  detail.innerHTML=`<span class="badge"><strong>Tým:</strong> ${esc(selectedTeam())}</span><span class="badge"><strong>Linka:</strong> ${esc(selectedLink())}</span><span class="badge"><strong>Varianta:</strong> ${esc(selectedVar())}</span><span class="badge"><strong>Norma:</strong> ${norma} ks/hod</span><span class="badge"><strong>Vyrobeno:</strong> ${v} ks</span>`;
+}
+
+async function pridatTym(){
+  let n=await zadejText("Název/číslo nového týmu:"); if(!n)return; n=n.trim(); if(!n)return;
+  if(data[n]){alert("Tento tým už existuje.");return}
+  data[n]={};stav.team=n;stav.linka="";stav.varianta="";ulozData();ulozStav();nactiTymy();nactiLinky();
+}
+async function upravitTym(){
+  let old=selectedTeam(); if(!old)return;
+  let n=await zadejText("Nový název/číslo týmu:",old); if(!n)return; n=n.trim(); if(!n||n===old)return;
+  if(data[n]){alert("Tento tým už existuje.");return}
+  data[n]=data[old]; delete data[old];
+  prejmenujKlice(old,null,null,n,null,null);
+  stav.team=n;ulozData();ulozStav();nactiTymy();nactiLinky();
+}
+function smazatTym(){
+  let t=selectedTeam(); if(!t)return;
+  if(!confirm("Smazat celý tým "+t+" včetně všech linek a variant?"))return;
+  delete data[t];
+  Object.keys(vyroba).forEach(k=>{if(k.startsWith(t+"||"))delete vyroba[k]});
+  Object.keys(stavLinek).forEach(k=>{if(k.startsWith(t+"||"))delete stavLinek[k]});
+  stav={};ulozData();ulozVyrobu();ulozStavLinek();ulozStav();nactiTymy();nactiLinky();
+}
+async function pridatLinku(){
+  let t=selectedTeam(); if(!t){alert("Nejdřív vyber nebo přidej tým.");return}
+  let n=await zadejText("Název nové linky / projektu:"); if(!n)return; n=n.trim(); if(!n)return;
+  if(data[t][n]){alert("Tato linka už v týmu existuje.");return}
+  data[t][n]={varianty:{}};
+  let v=await zadejText("Název první varianty:");
+  if(v){let norma=await zadejCislo("Norma pro variantu "+v+" v ks/hod:");data[t][n].varianty[v.trim()]=cislo(norma)}
+  stav.linka=n;stav.varianta=v?v.trim():"";ulozData();ulozStav();nactiLinky();
+}
+async function upravitLinku(){
+  let t=selectedTeam(),old=selectedLink(); if(!old)return;
+  let n=await zadejText("Nový název linky / projektu:",old); if(!n)return; n=n.trim(); if(!n||n===old)return;
+  if(data[t][n]){alert("Tato linka už existuje.");return}
+  data[t][n]=data[t][old]; delete data[t][old];
+  prejmenujKlice(t,old,null,t,n,null);
+  stav.linka=n;ulozData();ulozStav();nactiLinky();
+}
+function smazatLinku(){
+  let t=selectedTeam(),l=selectedLink(); if(!l)return;
+  if(!confirm("Smazat linku/projekt "+l+" včetně variant?"))return;
+  delete data[t][l];
+  Object.keys(vyroba).forEach(k=>{if(k.startsWith(t+"||"+l+"||"))delete vyroba[k]});
+  delete stavLinek[lineStateKey(t,l)];
+  stav.linka="";stav.varianta="";ulozData();ulozVyrobu();ulozStavLinek();ulozStav();nactiLinky();
+}
+async function pridatVariantu(){
+  let l=aktualniLinka(); if(!l){alert("Nejdřív vyber nebo přidej linku.");return}
+  let v=await zadejText("Název nové varianty:"); if(!v)return; v=v.trim(); if(!v)return;
+  if(Object.prototype.hasOwnProperty.call(l.varianty,v)){alert("Tato varianta už na této lince existuje.");return}
+  let n=await zadejCislo("Norma v ks/hod:"); l.varianty[v]=cislo(n);
+  stav.varianta=v;stavLinek[lineStateKey(selectedTeam(),selectedLink())]=v;
+  ulozData();ulozStav();ulozStavLinek();nactiVarianty(false);
+}
+async function upravitVariantu(){
+  let l=aktualniLinka(),old=selectedVar(); if(!l||!old)return;
+  let v=await zadejText("Název varianty:",old); if(!v)return; v=v.trim(); if(!v)return;
+  let n=await zadejCislo("Norma v ks/hod:",l.varianty[old]); if(n===null)return;
+  if(v!==old&&Object.prototype.hasOwnProperty.call(l.varianty,v)){alert("Tato varianta už existuje.");return}
+  let oldNorm=l.varianty[old]; delete l.varianty[old]; l.varianty[v]=cislo(n)||oldNorm;
+  if(v!==old)prejmenujKlice(selectedTeam(),selectedLink(),old,selectedTeam(),selectedLink(),v);
+  stav.varianta=v;stavLinek[lineStateKey(selectedTeam(),selectedLink())]=v;
+  ulozData();ulozStav();ulozStavLinek();nactiVarianty(false);
+}
+function smazatVariantu(){
+  let l=aktualniLinka(),v=selectedVar(); if(!l||!v)return;
+  if(!confirm("Smazat variantu "+v+"?"))return;
+  delete l.varianty[v]; delete vyroba[prodKey(selectedTeam(),selectedLink(),v)];
+  stav.varianta="";delete stavLinek[lineStateKey(selectedTeam(),selectedLink())];
+  ulozData();ulozVyrobu();ulozStavLinek();ulozStav();nactiVarianty(false);
+}
+function prejmenujKlice(oldT,oldL,oldV,newT,newL,newV){
+  let nv={};
+  Object.entries(vyroba).forEach(([k,val])=>{
+    let [t,l,v]=k.split("||");
+    if((oldT===null||t===oldT)&&(oldL===null||l===oldL)&&(oldV===null||v===oldV)){
+      t=newT??t;l=newL??l;v=newV??v;
+    }
+    nv[prodKey(t,l,v)]=val;
+  });
+  vyroba=nv;ulozVyrobu();
+  let ns={};
+  Object.entries(stavLinek).forEach(([k,val])=>{
+    let [t,l]=k.split("||");
+    if((oldT===null||t===oldT)&&(oldL===null||l===oldL)){
+      t=newT??t;l=newL??l;if(oldV!==null&&val===oldV)val=newV;
+    }
+    ns[lineStateKey(t,l)]=val;
+  });
+  stavLinek=ns;ulozStavLinek();
+}
+
+function fillSelect(sel, items, labelFn=x=>x){
+  if(!sel)return;
+  let old=sel.value;
+  sel.innerHTML="";
+  items.forEach(x=>sel.add(new Option(labelFn(x),x)));
+  if(items.includes(old))sel.value=old;
+}
+function refreshSprava(){
+  const teams=Object.keys(data).sort((a,b)=>a.localeCompare(b,'cs',{numeric:true}));
+  fillSelect(document.getElementById('manageTeamSelect'),teams,t=>'Tým '+t);
+  fillSelect(document.getElementById('manageLineTeam'),teams,t=>'Tým '+t);
+  fillSelect(document.getElementById('manageVarTeam'),teams,t=>'Tým '+t);
+  if(document.getElementById('manageTeamSelect') && selectedTeam()) document.getElementById('manageTeamSelect').value=selectedTeam();
+  if(document.getElementById('manageLineTeam') && selectedTeam()) document.getElementById('manageLineTeam').value=selectedTeam();
+  if(document.getElementById('manageVarTeam') && selectedTeam()) document.getElementById('manageVarTeam').value=selectedTeam();
+  refreshTeamForm(); refreshLineForm(); refreshVarForm(false, true);
+}
+function refreshTeamForm(){
+  let s=document.getElementById('manageTeamSelect'), n=document.getElementById('manageTeamName');
+  if(!s||!n)return; n.value=s.value||'';
+}
+function refreshLineForm(){
+  let ts=document.getElementById('manageLineTeam'), ls=document.getElementById('manageLineSelect'), name=document.getElementById('manageLineName');
+  if(!ts||!ls||!name)return;
+  let t=ts.value||selectedTeam(); let linky=Object.keys(data[t]||{}).sort((a,b)=>a.localeCompare(b,'cs',{numeric:true}));
+  fillSelect(ls,linky);
+  if(forceMain && t===selectedTeam() && selectedLink() && linky.includes(selectedLink()))ls.value=selectedLink();
+  name.value=ls.value||'';
+}
+function refreshVarForm(keepInputs=false, forceMain=false){
+  let ts=document.getElementById('manageVarTeam'), ls=document.getElementById('manageVarLine'), vs=document.getElementById('manageVarSelect'), name=document.getElementById('manageVarName'), norm=document.getElementById('manageVarNorm');
+  if(!ts||!ls||!vs||!name||!norm)return;
+  let t=ts.value||selectedTeam(); let linky=Object.keys(data[t]||{}).sort((a,b)=>a.localeCompare(b,'cs',{numeric:true}));
+  fillSelect(ls,linky);
+  if(forceMain && t===selectedTeam() && selectedLink() && linky.includes(selectedLink()))ls.value=selectedLink();
+  let l=ls.value; let vars=Object.keys((data[t]&&data[t][l]&&data[t][l].varianty)||{}).sort((a,b)=>a.localeCompare(b,'cs',{numeric:true}));
+  fillSelect(vs,vars);
+  if(forceMain && t===selectedTeam() && l===selectedLink() && selectedVar() && vars.includes(selectedVar()))vs.value=selectedVar();
+  if(keepInputs)return;
+  let v=vs.value; name.value=v||''; norm.value=v?data[t][l].varianty[v]:'';
+}
+function hookSprava(){
+  let map={
+    manageTeamSelect:refreshTeamForm,
+    manageLineTeam:refreshLineForm,
+    manageLineSelect:()=>{let s=document.getElementById('manageLineSelect'),n=document.getElementById('manageLineName'); if(s&&n)n.value=s.value||''},
+    manageVarTeam:()=>refreshVarForm(false, false),
+    manageVarLine:()=>refreshVarForm(false, false),
+    manageVarSelect:()=>{let ts=document.getElementById('manageVarTeam'),ls=document.getElementById('manageVarLine'),vs=document.getElementById('manageVarSelect'),n=document.getElementById('manageVarName'),no=document.getElementById('manageVarNorm'); if(ts&&ls&&vs&&n&&no){n.value=vs.value||''; no.value=vs.value?data[ts.value][ls.value].varianty[vs.value]:''}}
+  };
+  Object.entries(map).forEach(([id,fn])=>{let el=document.getElementById(id); if(el)el.onchange=fn});
+}
+function pridatTymForm(){
+  let n=(document.getElementById('manageTeamName').value||'').trim(); if(!n){alert('Zadej název týmu.');return} if(data[n]){alert('Tento tým už existuje.');return}
+  data[n]={}; stav.team=n; stav.linka=''; stav.varianta=''; ulozData();ulozStav();nactiTymy();nactiLinky();refreshSprava();renderPrehled();
+}
+function upravitTymForm(){
+  let old=document.getElementById('manageTeamSelect').value, n=(document.getElementById('manageTeamName').value||'').trim(); if(!old||!n)return; if(n!==old&&data[n]){alert('Tento tým už existuje.');return}
+  if(n!==old){data[n]=data[old];delete data[old];prejmenujKlice(old,null,null,n,null,null);if(stav.team===old)stav.team=n}
+  ulozData();ulozStav();nactiTymy();nactiLinky();refreshSprava();renderPrehled();
+}
+function smazatTymForm(){
+  let t=document.getElementById('manageTeamSelect').value; if(!t)return; teamSelect.value=t; smazatTym(); refreshSprava();
+}
+function pridatLinkuForm(){
+  let t=document.getElementById('manageLineTeam').value, n=(document.getElementById('manageLineName').value||'').trim();
+  if(!t||!n){alert('Vyber tým a zadej název linky.');return}
+  if(Object.prototype.hasOwnProperty.call(data[t],n)){alert('Tato linka už existuje.');return}
+  data[t][n]={varianty:{}}; stav.team=t; stav.linka=n; stav.varianta='';
+  ulozData();ulozStav();nactiTymy();nactiLinky();refreshSprava();renderPrehled();
+  document.getElementById('manageVarTeam').value=t;
+  refreshVarForm(true);
+  document.getElementById('manageVarLine').value=n;
+  refreshVarForm(true);
+  document.getElementById('manageVarName').value='';
+  document.getElementById('manageVarNorm').value='';
+}
+function upravitLinkuForm(){
+  let t=document.getElementById('manageLineTeam').value, old=document.getElementById('manageLineSelect').value, n=(document.getElementById('manageLineName').value||'').trim(); if(!t||!old||!n)return; if(n!==old&&data[t][n]){alert('Tato linka už existuje.');return}
+  if(n!==old){data[t][n]=data[t][old];delete data[t][old];prejmenujKlice(t,old,null,t,n,null);if(stav.team===t&&stav.linka===old)stav.linka=n}
+  ulozData();ulozStav();nactiTymy();nactiLinky();refreshSprava();renderPrehled();
+}
+function smazatLinkuForm(){
+  let t=document.getElementById('manageLineTeam').value, l=document.getElementById('manageLineSelect').value; if(!t||!l)return; teamSelect.value=t; nactiLinky(); linkaSelect.value=l; smazatLinku(); refreshSprava();
+}
+function pridatVariantuForm(){
+  let t=document.getElementById('manageVarTeam').value, l=document.getElementById('manageVarLine').value, v=(document.getElementById('manageVarName').value||'').trim(), n=cislo(document.getElementById('manageVarNorm').value);
+  if(!t||!l||!v){alert('Vyber tým, linku a zadej variantu.');return}
+  if(Object.prototype.hasOwnProperty.call(data[t][l].varianty,v)){alert('Tato varianta už existuje.');return}
+  data[t][l].varianty[v]=n;
+  stav.team=t;stav.linka=l;stav.varianta=v;stavLinek[lineStateKey(t,l)]=v;
+  ulozData();ulozStav();ulozStavLinek();
+  nactiTymy();nactiLinky();refreshSprava();renderPrehled();
+  /* Po přidání varianty necháme uživatele hned zadávat další variantu na stejné lince. */
+  document.getElementById('manageVarTeam').value=t;
+  refreshVarForm(true);
+  document.getElementById('manageVarLine').value=l;
+  refreshVarForm(true);
+  document.getElementById('manageVarName').value='';
+  document.getElementById('manageVarNorm').value='';
+  setTimeout(()=>document.getElementById('manageVarName').focus(),50);
+}
+function upravitVariantuForm(){
+  let t=document.getElementById('manageVarTeam').value, l=document.getElementById('manageVarLine').value, old=document.getElementById('manageVarSelect').value, v=(document.getElementById('manageVarName').value||'').trim(), n=cislo(document.getElementById('manageVarNorm').value); if(!t||!l||!old||!v)return; if(v!==old&&Object.prototype.hasOwnProperty.call(data[t][l].varianty,v)){alert('Tato varianta už existuje.');return}
+  delete data[t][l].varianty[old]; data[t][l].varianty[v]=n; if(v!==old)prejmenujKlice(t,l,old,t,l,v); if(stav.team===t&&stav.linka===l)stav.varianta=v; stavLinek[lineStateKey(t,l)]=v; ulozData();ulozStav();ulozStavLinek();nactiTymy();nactiLinky();refreshSprava();renderPrehled();
+}
+function smazatVariantuForm(){
+  let t=document.getElementById('manageVarTeam').value, l=document.getElementById('manageVarLine').value, v=document.getElementById('manageVarSelect').value; if(!t||!l||!v)return; teamSelect.value=t;nactiLinky();linkaSelect.value=l;nactiVarianty(false);variantaSelect.value=v;smazatVariantu();refreshSprava();
+}
+function exportBackup(){
+  let backup={app:'Moje Linky PRO',version:3,created:new Date().toISOString(),data,stav,vyroba,stavLinek};
+  document.getElementById('backupBox').value=JSON.stringify(backup,null,2);
+}
+function importBackup(){
+  let raw=document.getElementById('backupBox').value.trim(); if(!raw){alert('Nejdřív vlož zálohu do pole.');return}
+  try{
+    let b=JSON.parse(raw);
+    if(!b.data){alert('Záloha neobsahuje data.');return}
+    if(!confirm('Načíst zálohu? Aktuální data v tomto telefonu/prohlížeči se přepíšou.'))return;
+    data=b.data||{}; stav=b.stav||{}; vyroba=b.vyroba||{}; stavLinek=b.stavLinek||{};
+    ulozData();ulozStav();ulozVyrobu();ulozStavLinek();nactiTymy();nactiLinky();refreshSprava();renderPrehled();alert('Záloha byla načtena.');
+  }catch(e){alert('Zálohu se nepodařilo načíst. Zkontroluj, že je vložený celý text zálohy.')}
+}
+function copyBackup(){
+  let box=document.getElementById('backupBox'); if(!box.value)exportBackup(); box.select(); document.execCommand('copy');
+}
+
+function renderPrehled(){
+  let box=document.getElementById("prehledDat");
+  let html="";
+  Object.keys(data).sort((a,b)=>a.localeCompare(b,'cs',{numeric:true})).forEach(t=>{
+    html+=`<div class="listItem"><h3>Tým ${esc(t)}</h3>`;
+    let linky=data[t];
+    let names=Object.keys(linky).sort((a,b)=>a.localeCompare(b,'cs',{numeric:true}));
+    if(!names.length)html+="<p class='muted'>Zatím bez linek/projektů.</p>";
+    names.forEach(l=>{
+      html+=`<p><strong>${esc(l)}</strong></p>`;
+      Object.entries(linky[l].varianty||{}).forEach(([v,n])=>html+=`<span class="badge">${esc(v)}: <strong>${esc(n)}</strong> ks/hod</span>`);
+    });
+    html+="</div>";
+  });
+  box.innerHTML=html||"<p class='muted'>Zatím nejsou žádná data.</p>";
+}
+
+nactiTymy();nactiLinky();hookSprava();refreshSprava();renderPrehled();
+</script>
+</body>
+</html>
