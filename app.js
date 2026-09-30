@@ -5,6 +5,9 @@ const PROD_KEY = 'moje_linky_pro_produced_v3_stabilni';
 const OLD_PROD = 'moje_linky_pro_vyroba_v2';
 const TWO_PROD_KEY = 'moje_linky_pro_two_hours_v1';
 const THEME_KEY = 'moje_linky_pro_theme_v1';
+const SHORTCUTS_KEY = 'moje_linky_pro_shortcuts_v1';
+const TARGET_KEY = 'moje_linky_pro_target_calculator_v1';
+const MAX_SHORTCUTS = 6;
 
 const defaultData = {
   "1": {
@@ -72,6 +75,10 @@ function num(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function formatNumber(value, maximumFractionDigits = 2) {
+  return new Intl.NumberFormat('cs-CZ', { maximumFractionDigits }).format(value);
+}
+
 function sortCs(a, b) {
   return String(a).localeCompare(String(b), 'cs', { numeric: true });
 }
@@ -88,30 +95,74 @@ let data = load(DATA_KEY, null) || dataFromOld() || clone(defaultData);
 let state = load(STATE_KEY, { calcTeam: '', calcLine: '', calcVariant: '', lineVariant: {}, calcMode: 'one' });
 let produced = load(PROD_KEY, null) || load(OLD_PROD, {});
 let twoProduced = load(TWO_PROD_KEY, {});
+let shortcuts = load(SHORTCUTS_KEY, {});
+let targetInputs = load(TARGET_KEY, { norm: '', period: '60', downtime: '' });
+
+function pKey(team, line, variant) {
+  return `${team}||${line}||${variant}`;
+}
+
+function lvKey(team, line) {
+  return `${team}||${line}`;
+}
+
+function hasCombination(team, line, variant) {
+  return Boolean(data[team] && data[team][line] && Object.prototype.hasOwnProperty.call(data[team][line].varianty || {}, variant));
+}
+
+function normalizeShortcuts() {
+  if (!shortcuts || typeof shortcuts !== 'object' || Array.isArray(shortcuts)) shortcuts = {};
+
+  const clean = {};
+  for (const [team, entries] of Object.entries(shortcuts)) {
+    if (!Array.isArray(entries) || !data[team]) continue;
+    const used = new Set();
+    const teamEntries = [];
+
+    for (const entry of entries) {
+      const line = String(entry?.line ?? '').trim();
+      const variant = String(entry?.variant ?? '').trim();
+      const key = pKey(team, line, variant);
+      if (!line || !variant || used.has(key) || !hasCombination(team, line, variant)) continue;
+      used.add(key);
+      teamEntries.push({ line, variant });
+      if (teamEntries.length === MAX_SHORTCUTS) break;
+    }
+
+    if (teamEntries.length) clean[team] = teamEntries;
+  }
+
+  shortcuts = clean;
+}
 
 function normalize() {
-  if (!state || typeof state !== 'object') state = {};
-  if (!state.lineVariant || typeof state.lineVariant !== 'object') state.lineVariant = {};
+  if (!data || typeof data !== 'object' || Array.isArray(data)) data = clone(defaultData);
+  if (!state || typeof state !== 'object' || Array.isArray(state)) state = {};
+  if (!state.lineVariant || typeof state.lineVariant !== 'object' || Array.isArray(state.lineVariant)) state.lineVariant = {};
   if (state.calcMode !== 'two') state.calcMode = 'one';
-  if (!produced || typeof produced !== 'object') produced = {};
-  if (!twoProduced || typeof twoProduced !== 'object') twoProduced = {};
+  if (!produced || typeof produced !== 'object' || Array.isArray(produced)) produced = {};
+  if (!twoProduced || typeof twoProduced !== 'object' || Array.isArray(twoProduced)) twoProduced = {};
+  if (!targetInputs || typeof targetInputs !== 'object' || Array.isArray(targetInputs)) targetInputs = { norm: '', period: '60', downtime: '' };
 
   for (const team of Object.keys(defaultData)) {
     if (!data[team]) data[team] = {};
   }
 
   for (const [team, lineList] of Object.entries(data)) {
-    if (!lineList || typeof lineList !== 'object') data[team] = {};
+    if (!lineList || typeof lineList !== 'object' || Array.isArray(lineList)) data[team] = {};
     for (const [line, lineData] of Object.entries(data[team])) {
-      if (!lineData || typeof lineData !== 'object') data[team][line] = { varianty: {} };
-      if (!data[team][line].varianty) data[team][line].varianty = {};
+      if (!lineData || typeof lineData !== 'object' || Array.isArray(lineData)) data[team][line] = { varianty: {} };
+      if (!data[team][line].varianty || typeof data[team][line].varianty !== 'object') data[team][line].varianty = {};
     }
   }
 
+  normalizeShortcuts();
   save(DATA_KEY, data);
   save(PROD_KEY, produced);
   save(TWO_PROD_KEY, twoProduced);
   save(STATE_KEY, state);
+  save(SHORTCUTS_KEY, shortcuts);
+  save(TARGET_KEY, targetInputs);
 }
 
 normalize();
@@ -126,7 +177,21 @@ const calc = {
   secondHour: document.getElementById('producedSecondHour')
 };
 
+const targetCalc = {
+  norm: document.getElementById('targetNorm'),
+  period: document.getElementById('targetPeriod'),
+  downtime: document.getElementById('targetDowntime'),
+  result: document.getElementById('targetResult'),
+  detail: document.getElementById('targetDetail'),
+  card: document.getElementById('targetResultCard'),
+  useCurrent: document.getElementById('useCurrentNorm')
+};
+
 const mgr = {
+  quickTeam: document.getElementById('quickTeam'),
+  quickLine: document.getElementById('quickLine'),
+  quickVariant: document.getElementById('quickVariant'),
+  quickList: document.getElementById('shortcutManagerList'),
   teamSel: document.getElementById('teamSel'),
   teamName: document.getElementById('teamName'),
   lineTeam: document.getElementById('lineTeam'),
@@ -159,20 +224,63 @@ function setOptions(select, items, label = (item) => item, keep = '') {
   else if (items.length) select.value = items[0];
 }
 
-function pKey(team, line, variant) {
-  return `${team}||${line}||${variant}`;
-}
-
-function lvKey(team, line) {
-  return `${team}||${line}`;
-}
-
 function currentKey() {
   return pKey(state.calcTeam, state.calcLine, state.calcVariant);
 }
 
 function currentNorm() {
   return num((((data[state.calcTeam] || {})[state.calcLine] || {}).varianty || {})[state.calcVariant]);
+}
+
+function teamShortcuts(team) {
+  return Array.isArray(shortcuts[team]) ? shortcuts[team] : [];
+}
+
+function saveShortcuts() {
+  normalizeShortcuts();
+  save(SHORTCUTS_KEY, shortcuts);
+}
+
+function renderActiveSelection() {
+  const box = document.getElementById('activeSelection');
+  const norm = currentNorm();
+  if (!state.calcTeam || !state.calcLine || !state.calcVariant) {
+    box.textContent = `Tým ${state.calcTeam || '—'} · vyber linku a variantu`;
+    return;
+  }
+  box.textContent = `Tým ${state.calcTeam} · ${state.calcLine} / ${state.calcVariant} · ${norm || '—'} ks/h`;
+}
+
+function renderQuickLinks() {
+  const grid = document.getElementById('quickLinksGrid');
+  const empty = document.getElementById('quickLinksEmpty');
+  const list = teamShortcuts(state.calcTeam);
+  grid.innerHTML = '';
+  empty.hidden = list.length > 0;
+
+  list.forEach((entry) => {
+    const norm = num(data[state.calcTeam][entry.line].varianty[entry.variant]);
+    const button = document.createElement('button');
+    const active = entry.line === state.calcLine && entry.variant === state.calcVariant;
+    button.type = 'button';
+    button.className = `quick-link${active ? ' active' : ''}`;
+    button.setAttribute('aria-pressed', String(active));
+    button.setAttribute('aria-label', `${entry.line}, ${entry.variant}, norma ${norm} kusů za hodinu`);
+    button.innerHTML = `<span class="quick-link-content"><span class="quick-link-line">${esc(entry.line)}</span><span class="quick-link-variant">${esc(entry.variant)}</span><span class="quick-link-norm">${norm} ks/h</span></span>`;
+    button.addEventListener('click', () => activateShortcut(state.calcTeam, entry.line, entry.variant, true));
+    grid.appendChild(button);
+  });
+}
+
+function activateShortcut(team, line, variant, focusInput = false) {
+  if (!hasCombination(team, line, variant)) return;
+  state.calcTeam = team;
+  state.calcLine = line;
+  state.calcVariant = variant;
+  state.lineVariant[lvKey(team, line)] = variant;
+  refreshCalc(true, true, true);
+  document.getElementById('selectionDetails').open = false;
+  if (focusInput) setCalcMode(state.calcMode, true);
 }
 
 function renderCalcTeamButtons() {
@@ -211,6 +319,12 @@ function loadProductionInputs() {
   calc.secondHour.value = pair.second ?? '';
 }
 
+function refreshCurrentNormButton() {
+  const norm = currentNorm();
+  targetCalc.useCurrent.textContent = norm ? `Použít aktivní normu (${norm} ks/h)` : 'Použít aktivní normu';
+  targetCalc.useCurrent.disabled = !norm;
+}
+
 function refreshCalc(keepTeam = true, keepLine = true, keepVariant = true) {
   const teamList = teams();
   setOptions(calc.team, teamList, (team) => `Tým ${team}`, keepTeam ? state.calcTeam : '');
@@ -229,9 +343,12 @@ function refreshCalc(keepTeam = true, keepLine = true, keepVariant = true) {
 
   loadProductionInputs();
   renderCalcTeamButtons();
+  renderActiveSelection();
+  renderQuickLinks();
   save(STATE_KEY, state);
   calcResult();
   calcTwoHour();
+  refreshCurrentNormButton();
 }
 
 calc.team.addEventListener('change', () => {
@@ -252,8 +369,11 @@ calc.variant.addEventListener('change', () => {
   if (state.calcVariant) state.lineVariant[lvKey(state.calcTeam, state.calcLine)] = state.calcVariant;
   loadProductionInputs();
   save(STATE_KEY, state);
+  renderActiveSelection();
+  renderQuickLinks();
   calcResult();
   calcTwoHour();
+  refreshCurrentNormButton();
 });
 
 calc.produced.addEventListener('input', () => {
@@ -389,10 +509,10 @@ function setCalcMode(mode, focusInput = false) {
   save(STATE_KEY, state);
 
   if (focusInput) {
-    const target = selectedMode === 'two' ? calc.firstHour : calc.produced;
+    const input = selectedMode === 'two' ? calc.firstHour : calc.produced;
     window.setTimeout(() => {
-      target.focus();
-      target.select();
+      input.focus();
+      input.select();
     }, 20);
   }
 }
@@ -430,8 +550,149 @@ for (const input of [calc.produced, calc.firstHour, calc.secondHour]) {
   input.addEventListener('focus', () => input.select());
 }
 
+document.getElementById('openSelection').addEventListener('click', () => {
+  const details = document.getElementById('selectionDetails');
+  details.open = true;
+  window.setTimeout(() => calc.line.focus(), 0);
+});
+
+document.getElementById('manageQuickLinks').addEventListener('click', () => {
+  showPage('management');
+  window.setTimeout(() => {
+    const details = document.getElementById('quickDetails');
+    details.open = true;
+    mgr.quickTeam.focus();
+  }, 0);
+});
+
+function addShortcut(team, line, variant) {
+  if (!hasCombination(team, line, variant)) {
+    alert('Vyber platnou linku a variantu.');
+    return false;
+  }
+
+  const list = teamShortcuts(team);
+  if (list.some((entry) => entry.line === line && entry.variant === variant)) {
+    alert('Tato rychlá linka už je uložená.');
+    return false;
+  }
+
+  if (list.length >= MAX_SHORTCUTS) {
+    alert(`Pro tým můžeš uložit nejvýše ${MAX_SHORTCUTS} rychlých linek.`);
+    return false;
+  }
+
+  if (!shortcuts[team]) shortcuts[team] = [];
+  shortcuts[team].push({ line, variant });
+  saveShortcuts();
+  renderQuickLinks();
+  renderShortcutManager();
+  return true;
+}
+
+function removeShortcut(team, index) {
+  if (!Array.isArray(shortcuts[team])) return;
+  shortcuts[team].splice(index, 1);
+  if (!shortcuts[team].length) delete shortcuts[team];
+  saveShortcuts();
+  renderQuickLinks();
+  renderShortcutManager();
+}
+
+function moveShortcut(team, index, direction) {
+  const list = teamShortcuts(team);
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= list.length) return;
+  [list[index], list[nextIndex]] = [list[nextIndex], list[index]];
+  shortcuts[team] = list;
+  saveShortcuts();
+  renderQuickLinks();
+  renderShortcutManager();
+}
+
+document.getElementById('addCurrentShortcut').addEventListener('click', () => {
+  if (addShortcut(state.calcTeam, state.calcLine, state.calcVariant)) {
+    document.getElementById('selectionDetails').open = false;
+  }
+});
+
+document.getElementById('addQuickShortcut').addEventListener('click', () => {
+  addShortcut(mgr.quickTeam.value, mgr.quickLine.value, mgr.quickVariant.value);
+});
+
+function loadTargetInputs() {
+  targetCalc.norm.value = targetInputs.norm ?? '';
+  targetCalc.period.value = targetInputs.period ?? '60';
+  targetCalc.downtime.value = targetInputs.downtime ?? '';
+}
+
+function saveTargetInputs() {
+  targetInputs = {
+    norm: targetCalc.norm.value,
+    period: targetCalc.period.value,
+    downtime: targetCalc.downtime.value
+  };
+  save(TARGET_KEY, targetInputs);
+  calcTargetResult();
+}
+
+function calcTargetResult() {
+  const norm = Math.max(0, num(targetCalc.norm.value));
+  const period = Math.max(0, num(targetCalc.period.value));
+  const downtime = Math.max(0, num(targetCalc.downtime.value));
+  targetCalc.card.classList.remove('is-bad', 'is-ok');
+
+  if (!norm || !period || targetCalc.downtime.value === '') {
+    targetCalc.result.className = 'result muted';
+    targetCalc.result.textContent = 'Zadej normu a čas prostoje.';
+    targetCalc.detail.textContent = 'Můžeš použít aktivní normu, nebo zadat vlastní.';
+    return;
+  }
+
+  if (downtime > period) {
+    targetCalc.card.classList.add('is-bad');
+    targetCalc.result.className = 'result bad';
+    targetCalc.result.textContent = 'Prostoj je delší než celé období.';
+    targetCalc.detail.textContent = 'Oprav délku období nebo čas prostoje.';
+    return;
+  }
+
+  const remainingMinutes = period - downtime;
+  const exactPieces = norm * (remainingMinutes / 60);
+  const requiredPieces = Math.max(0, Math.ceil(exactPieces - Number.EPSILON));
+  targetCalc.card.classList.add('is-ok');
+  targetCalc.result.className = 'result ok';
+  targetCalc.result.innerHTML = `Udělat nejméně: ${formatNumber(requiredPieces, 0)} ks`;
+  targetCalc.detail.innerHTML = `Zbývá <strong>${formatNumber(remainingMinutes, 1)} min</strong> z ${formatNumber(period, 1)} min. Přesný přepočet je ${formatNumber(exactPieces)} ks.`;
+}
+
+for (const input of [targetCalc.norm, targetCalc.period, targetCalc.downtime]) {
+  input.addEventListener('input', saveTargetInputs);
+  input.addEventListener('focus', () => input.select());
+}
+
+targetCalc.useCurrent.addEventListener('click', () => {
+  const norm = currentNorm();
+  if (!norm) return;
+  targetCalc.norm.value = norm;
+  saveTargetInputs();
+  targetCalc.downtime.focus();
+});
+
+document.getElementById('resetTargetCalculator').addEventListener('click', () => {
+  targetCalc.norm.value = '';
+  targetCalc.period.value = '60';
+  targetCalc.downtime.value = '';
+  saveTargetInputs();
+  targetCalc.norm.focus();
+});
+
 function refreshManagers(preserve = true) {
   const teamList = teams();
+
+  setOptions(mgr.quickTeam, teamList, (team) => `Tým ${team}`, preserve ? mgr.quickTeam.value : state.calcTeam);
+  refreshQuickLineManager(preserve);
+
   setOptions(mgr.teamSel, teamList, (team) => `Tým ${team}`, preserve ? mgr.teamSel.value : state.calcTeam);
   mgr.teamName.value = mgr.teamSel.value || '';
 
@@ -441,6 +702,61 @@ function refreshManagers(preserve = true) {
   setOptions(mgr.varTeam, teamList, (team) => `Tým ${team}`, preserve ? mgr.varTeam.value : state.calcTeam);
   refreshVarLineManager(preserve);
   renderOverview();
+}
+
+function refreshQuickLineManager(preserve = true) {
+  const team = mgr.quickTeam.value;
+  setOptions(mgr.quickLine, lines(team), (line) => line, preserve ? mgr.quickLine.value : state.calcLine);
+  refreshQuickVariantManager(preserve);
+  renderShortcutManager();
+}
+
+function refreshQuickVariantManager(preserve = true) {
+  const team = mgr.quickTeam.value;
+  const line = mgr.quickLine.value;
+  setOptions(mgr.quickVariant, variants(team, line), (variant) => variant, preserve ? mgr.quickVariant.value : state.calcVariant);
+}
+
+function renderShortcutManager() {
+  const team = mgr.quickTeam.value;
+  const list = teamShortcuts(team);
+  mgr.quickList.innerHTML = '';
+
+  if (!list.length) {
+    mgr.quickList.innerHTML = '<p class="shortcut-manager-empty">Pro tento tým zatím nemáš žádné rychlé linky.</p>';
+    return;
+  }
+
+  list.forEach((entry, index) => {
+    const norm = num(data[team][entry.line].varianty[entry.variant]);
+    const row = document.createElement('div');
+    row.className = 'shortcut-manager-row';
+    row.innerHTML = `<div class="shortcut-manager-name"><strong>${esc(entry.line)}</strong><span>${esc(entry.variant)} · ${norm} ks/h</span></div>`;
+
+    const up = document.createElement('button');
+    up.type = 'button';
+    up.textContent = '↑';
+    up.disabled = index === 0;
+    up.setAttribute('aria-label', `Posunout ${entry.line} nahoru`);
+    up.addEventListener('click', () => moveShortcut(team, index, -1));
+
+    const down = document.createElement('button');
+    down.type = 'button';
+    down.textContent = '↓';
+    down.disabled = index === list.length - 1;
+    down.setAttribute('aria-label', `Posunout ${entry.line} dolů`);
+    down.addEventListener('click', () => moveShortcut(team, index, 1));
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'remove-shortcut';
+    remove.textContent = '×';
+    remove.setAttribute('aria-label', `Odebrat ${entry.line} z rychlých linek`);
+    remove.addEventListener('click', () => removeShortcut(team, index));
+
+    row.append(up, down, remove);
+    mgr.quickList.appendChild(row);
+  });
 }
 
 function refreshLineManager(preserve = true) {
@@ -461,9 +777,12 @@ function refreshVarManager(preserve = true) {
   setOptions(mgr.varSel, variants(team, line), (variant) => variant, preserve ? mgr.varSel.value : '');
   const variant = mgr.varSel.value;
   mgr.varName.value = variant || '';
-  mgr.varNorm.value = variant ? data[team][line].varianty[variant] : '';
+  mgr.varNorm.value = variant && data[team] && data[team][line] ? data[team][line].varianty[variant] : '';
 }
 
+mgr.quickTeam.addEventListener('change', () => refreshQuickLineManager(false));
+mgr.quickLine.addEventListener('change', () => refreshQuickVariantManager(false));
+mgr.quickVariant.addEventListener('change', () => refreshQuickVariantManager(true));
 mgr.teamSel.addEventListener('change', () => {
   mgr.teamName.value = mgr.teamSel.value || '';
 });
@@ -510,6 +829,7 @@ function deleteTeam() {
   if (!confirm(`Smazat tým ${team} včetně všech linek a variant?`)) return;
 
   delete data[team];
+  delete shortcuts[team];
   Object.keys(produced).forEach((key) => {
     if (key.startsWith(`${team}||`)) delete produced[key];
   });
@@ -530,6 +850,7 @@ function deleteTeam() {
   save(PROD_KEY, produced);
   save(TWO_PROD_KEY, twoProduced);
   save(STATE_KEY, state);
+  saveShortcuts();
   refreshCalc(false, false, false);
   refreshManagers(false);
 }
@@ -576,6 +897,7 @@ function deleteLine() {
   if (!confirm(`Smazat linku ${line}?`)) return;
 
   delete data[team][line];
+  if (Array.isArray(shortcuts[team])) shortcuts[team] = shortcuts[team].filter((entry) => entry.line !== line);
   Object.keys(produced).forEach((key) => {
     if (key.startsWith(`${team}||${line}||`)) delete produced[key];
   });
@@ -593,6 +915,7 @@ function deleteLine() {
   save(PROD_KEY, produced);
   save(TWO_PROD_KEY, twoProduced);
   save(STATE_KEY, state);
+  saveShortcuts();
   refreshCalc(true, false, false);
   refreshManagers(false);
 }
@@ -648,6 +971,7 @@ function deleteVariant() {
   if (!confirm(`Smazat variantu ${variant}?`)) return;
 
   delete data[team][line].varianty[variant];
+  if (Array.isArray(shortcuts[team])) shortcuts[team] = shortcuts[team].filter((entry) => !(entry.line === line && entry.variant === variant));
   delete produced[pKey(team, line, variant)];
   delete twoProduced[pKey(team, line, variant)];
   if (state.lineVariant[lvKey(team, line)] === variant) delete state.lineVariant[lvKey(team, line)];
@@ -657,6 +981,7 @@ function deleteVariant() {
   save(PROD_KEY, produced);
   save(TWO_PROD_KEY, twoProduced);
   save(STATE_KEY, state);
+  saveShortcuts();
   refreshCalc(true, true, false);
   refreshManagers(false);
 }
@@ -675,6 +1000,26 @@ function renamedProductionMap(source, oldTeam, oldLine, oldVariant, newTeam, new
   return renamed;
 }
 
+function renameShortcuts(oldTeam, oldLine, oldVariant, newTeam, newLine, newVariant) {
+  const renamed = {};
+  for (const [teamKey, entries] of Object.entries(shortcuts)) {
+    for (const entry of entries) {
+      let team = teamKey;
+      let line = entry.line;
+      let variant = entry.variant;
+      if ((oldTeam === null || team === oldTeam) && (oldLine === null || line === oldLine) && (oldVariant === null || variant === oldVariant)) {
+        if (newTeam !== null) team = newTeam;
+        if (newLine !== null) line = newLine;
+        if (newVariant !== null) variant = newVariant;
+      }
+      if (!renamed[team]) renamed[team] = [];
+      renamed[team].push({ line, variant });
+    }
+  }
+  shortcuts = renamed;
+  saveShortcuts();
+}
+
 function renameKeys(oldTeam, oldLine, oldVariant, newTeam, newLine, newVariant) {
   produced = renamedProductionMap(produced, oldTeam, oldLine, oldVariant, newTeam, newLine, newVariant);
   twoProduced = renamedProductionMap(twoProduced, oldTeam, oldLine, oldVariant, newTeam, newLine, newVariant);
@@ -691,6 +1036,7 @@ function renameKeys(oldTeam, oldLine, oldVariant, newTeam, newLine, newVariant) 
     renamedLineVariants[lvKey(team, line)] = variant;
   }
   state.lineVariant = renamedLineVariants;
+  renameShortcuts(oldTeam, oldLine, oldVariant, newTeam, newLine, newVariant);
 
   save(PROD_KEY, produced);
   save(TWO_PROD_KEY, twoProduced);
@@ -742,7 +1088,8 @@ document.getElementById('themeToggle').addEventListener('click', () => {
 });
 
 function showPage(pageName) {
-  const targetPage = ['calculator', 'management', 'overview', 'backup'].includes(pageName) ? pageName : 'calculator';
+  const pages = ['calculator', 'targets', 'management', 'overview', 'backup'];
+  const targetPage = pages.includes(pageName) ? pageName : 'calculator';
   document.querySelectorAll('[data-page]').forEach((page) => {
     page.hidden = page.dataset.page !== targetPage;
   });
@@ -762,12 +1109,14 @@ document.querySelectorAll('[data-page-target]').forEach((button) => {
 function exportBackup() {
   const backup = {
     app: 'Moje Linky PRO',
-    version: 5,
+    version: 6,
     created: new Date().toISOString(),
     data,
     state,
     produced,
     twoProduced,
+    shortcuts,
+    targetInputs,
     theme: document.body.dataset.theme
   };
   document.getElementById('backupBox').value = JSON.stringify(backup, null, 2);
@@ -786,11 +1135,15 @@ function importBackup() {
     state = backup.state || backup.stav || { calcTeam: '', calcLine: '', calcVariant: '', lineVariant: backup.stavLinek || {}, calcMode: 'one' };
     produced = backup.produced || backup.vyroba || {};
     twoProduced = backup.twoProduced || {};
+    shortcuts = backup.shortcuts || backup.quickLinks || {};
+    targetInputs = backup.targetInputs || { norm: '', period: '60', downtime: '' };
     normalize();
     if (backup.theme) applyTheme(backup.theme);
+    loadTargetInputs();
     refreshCalc(true, true, true);
     setCalcMode(state.calcMode, false);
     refreshManagers(false);
+    calcTargetResult();
     alert('Záloha byla načtena.');
   } catch (error) {
     alert('Zálohu se nepodařilo načíst.');
@@ -815,7 +1168,9 @@ function copyBackup() {
 }
 
 applyTheme(currentTheme(), false);
+loadTargetInputs();
 refreshCalc(true, true, true);
 setCalcMode(state.calcMode, false);
 refreshManagers(false);
+calcTargetResult();
 showPage('calculator');

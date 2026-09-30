@@ -5,26 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta id="themeColor" name="theme-color" content="#0d0f12">
   <title>Moje Linky PRO</title>
-  <link rel="icon" type="image/png" sizes="192x192" href="favicon.png?v=5">
-  <link rel="apple-touch-icon" href="favicon.png?v=5">
-  <link rel="stylesheet" href="styles.css?v=5">
-  <script src="app.js?v=5" defer></script>
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon.png?v=6">
+  <link rel="apple-touch-icon" href="favicon.png?v=6">
+  <link rel="stylesheet" href="styles.css?v=6">
+  <script src="app.js?v=6" defer></script>
 </head>
 <body data-theme="dark">
   <div class="app" id="app">
-    <header class="app-header">
-      <div>
-        <h1>Moje Linky PRO</h1>
-        <p>Rychlý výpočet prostojů podle vyrobených kusů.</p>
+    <header class="app-header compact-header">
+      <div class="brand-block">
+        <h1>Moje Linky <span>PRO</span></h1>
+        <p>Prostoje a výkon</p>
       </div>
-      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Přepnout na světlý režim">
+      <button class="theme-toggle icon-toggle" id="themeToggle" type="button" aria-label="Přepnout na světlý režim">
         <span id="themeIcon" aria-hidden="true">☀️</span>
         <span id="themeLabel">Světlý</span>
       </button>
     </header>
 
     <nav class="main-tabs" aria-label="Hlavní části aplikace">
-      <button class="main-tab active" type="button" data-page-target="calculator" aria-current="page">Výpočet</button>
+      <button class="main-tab active" type="button" data-page-target="calculator" aria-current="page">Prostoje</button>
+      <button class="main-tab" type="button" data-page-target="targets">Kusy</button>
       <button class="main-tab" type="button" data-page-target="management">Správa</button>
       <button class="main-tab" type="button" data-page-target="overview">Přehled</button>
       <button class="main-tab" type="button" data-page-target="backup">Záloha</button>
@@ -32,28 +33,46 @@
 
     <main>
       <section class="app-page" data-page="calculator">
-        <section class="card calculator-card">
-          <h2>Výpočet prostoje</h2>
+        <section class="card calculator-card compact-calculator">
+          <div class="calc-heading">
+            <div>
+              <h2>Výpočet prostoje</h2>
+              <p class="active-selection" id="activeSelection">Vyber rychlou linku nebo změň výběr.</p>
+            </div>
+            <button class="selection-button" id="openSelection" type="button">Změnit</button>
+          </div>
 
-          <span class="field-label">Tým</span>
+          <span class="field-label compact-label">Tým</span>
           <div class="team-buttons" id="calcTeamButtons" aria-label="Výběr týmu"></div>
           <select id="calcTeam" hidden aria-hidden="true" tabindex="-1"></select>
 
-          <div class="selection-grid">
-            <label>
-              <span>Linka / projekt</span>
-              <select id="calcLine"></select>
-            </label>
-            <label>
-              <span>Varianta</span>
-              <select id="calcVariant"></select>
-            </label>
-          </div>
+          <section class="shortcuts-section" aria-labelledby="quickLinksHeading">
+            <div class="section-row">
+              <h3 id="quickLinksHeading">Rychlé linky</h3>
+              <button class="text-button" id="manageQuickLinks" type="button">Upravit</button>
+            </div>
+            <div class="quick-links-grid" id="quickLinksGrid"></div>
+            <p class="shortcut-empty" id="quickLinksEmpty" hidden>Pro tento tým zatím nejsou uložené rychlé linky.</p>
+          </section>
 
-          <div class="norma" id="normaBox">Norma: —</div>
+          <details class="selection-details" id="selectionDetails">
+            <summary>Vybrat jinou linku nebo variantu</summary>
+            <div class="selection-grid">
+              <label>
+                <span>Linka / projekt</span>
+                <select id="calcLine"></select>
+              </label>
+              <label>
+                <span>Varianta</span>
+                <select id="calcVariant"></select>
+              </label>
+            </div>
+            <button class="secondary add-shortcut" id="addCurrentShortcut" type="button">★ Přidat aktivní mezi rychlé</button>
+          </details>
 
-          <span class="field-label mode-label">Způsob výpočtu</span>
-          <div class="mode-switch" role="tablist" aria-label="Způsob výpočtu">
+          <div class="norma compact-norma" id="normaBox">Norma: —</div>
+
+          <div class="mode-switch compact-mode" role="tablist" aria-label="Způsob výpočtu">
             <button id="oneModeButton" class="mode-button active" type="button" role="tab" aria-controls="oneHourPanel" aria-selected="true" data-calc-mode="one">1 hodina</button>
             <button id="twoModeButton" class="mode-button" type="button" role="tab" aria-controls="twoHourPanel" aria-selected="false" data-calc-mode="two">Přes 2 hodiny</button>
           </div>
@@ -111,10 +130,54 @@
         </section>
       </section>
 
+      <section class="app-page" data-page="targets" hidden>
+        <section class="card target-card">
+          <h2>Kolik kusů po prostoji?</h2>
+          <p>Zadej vše ručně. Aplikace spočítá, kolik kusů musíš za zbývající čas udělat.</p>
+
+          <div class="manual-grid">
+            <label>
+              <span>Norma ks / hod</span>
+              <input id="targetNorm" type="number" min="0" inputmode="decimal" placeholder="např. 60">
+            </label>
+            <label>
+              <span>Délka období v min</span>
+              <input id="targetPeriod" type="number" min="1" inputmode="numeric" value="60" placeholder="např. 60">
+            </label>
+            <label class="full-width">
+              <span>Prostoj v min</span>
+              <input id="targetDowntime" type="number" min="0" inputmode="numeric" placeholder="např. 15">
+            </label>
+          </div>
+
+          <div class="target-actions">
+            <button class="secondary" id="useCurrentNorm" type="button">Použít aktivní normu</button>
+            <button class="secondary" id="resetTargetCalculator" type="button">Vymazat</button>
+          </div>
+
+          <section class="result-card target-result-card" id="targetResultCard" aria-live="polite">
+            <div id="targetResult" class="result muted">Zadej normu a čas prostoje.</div>
+            <p class="target-detail" id="targetDetail"></p>
+          </section>
+        </section>
+      </section>
+
       <section class="app-page" data-page="management" hidden>
         <section class="card">
           <h2>Správa databáze</h2>
           <p>Výběry v této části nemění rozpracovaný výpočet.</p>
+
+          <details id="quickDetails">
+            <summary>⚡ Rychlé linky</summary>
+            <p class="hint">Každý tým může mít až 6 rychlých kombinací linky a varianty.</p>
+            <label><span>Tým</span><select id="quickTeam"></select></label>
+            <div class="selection-grid">
+              <label><span>Linka / projekt</span><select id="quickLine"></select></label>
+              <label><span>Varianta</span><select id="quickVariant"></select></label>
+            </div>
+            <button class="primary" id="addQuickShortcut" type="button">＋ Přidat rychlou linku</button>
+            <div class="shortcut-manager-list" id="shortcutManagerList"></div>
+          </details>
 
           <details>
             <summary>👥 Týmy</summary>
